@@ -38,7 +38,7 @@ $result = $conn->query($sql);
             <th>🔥 Fire Status</th>
             <th>💧 Water Status</th>
             <th>📏 Distance (cm)</th>
-            <th>Topic</th>
+            <th>Topik</th>
             <th>Timestamp</th>
         </tr>
         <?php
