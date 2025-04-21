@@ -20,18 +20,14 @@ $result = $conn->query($sql);
 <html>
 <head>
     <title>IoT Sensor Dashboard</title>
-    <style>
-        body { font-family: Arial; background: #f2f2f2; padding: 30px; }
-        table { border-collapse: collapse; width: 100%; background: #fff; box-shadow: 0 0 10px #ccc; }
-        th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
-        th { background-color: #333; color: white; }
-        .fire { color: red; font-weight: bold; }
-        .safe { color: green; font-weight: bold; }
-        .nowater { color: blue; font-weight: bold; }
-    </style>
+    <link rel="icon" href="logo.png" type="image/x-icon">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>📡 IoT Sensor Dashboard</h1>
+<body>
+    <h1 class="dashboard-title">
+        <img src="logo.png" alt="IoT Icon"> IoT Sensor Dashboard
+    </h1>
     <table>
         <tr>
             <th>ID</th>
