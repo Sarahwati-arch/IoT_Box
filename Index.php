@@ -2,7 +2,7 @@
 $host = "localhost";
 $user = "root";
 $pass = ""; // leave empty if no password
-$dbname = "iotbox";
+$dbname = "iotboxx";
 
 // Create connection
 $conn = new mysqli($host, $user, $pass, $dbname);
