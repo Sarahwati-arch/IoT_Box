@@ -14,7 +14,7 @@ db = mysql.connector.connect(
     host="localhost",
     user="root",
     password="",  # Replace if you set a password in XAMPP
-    database="iotboxx"
+    database="IoT_Box"
 )
 cursor = db.cursor()
 
