@@ -30,10 +30,10 @@ $result = $conn->query($sql);
     <table>
         <tr>
             <th>ID</th>
-            <th>🔥 Fire Status</th>
-            <th>💧 Water Status</th>
-            <th>📏 Distance (cm)</th>
-            <th>Topik</th>
+            <th>Fire Status</th>
+            <th>Water Status</th>
+            <th>Distance (cm)</th>
+            <th>Topic</th>
             <th>Timestamp</th>
         </tr>
         <?php
@@ -43,7 +43,7 @@ $result = $conn->query($sql);
                 $waterStatus = $row["water_status"] ?? "N/A";
                 $distance = $row["distance_cm"] ?? "N/A";
 
-                $fireClass = ($status == "🔥 Fire Detected! 🔥") ? "fire" : "safe";
+                $fireClass = ($status == " Fire Detected! ") ? "fire" : "safe";
                 $waterClass = (strpos($waterStatus, "No") !== false) ? "nowater" : "safe";
 
                 echo "<tr>
