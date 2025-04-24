@@ -32,7 +32,7 @@ $result = $conn->query($sql);
             <th>ID</th>
             <th>Fire Status</th>
             <th>Water Status</th>
-            <th>Distance (cm)</th>
+            <th>Motion</th>
             <th>Topic</th>
             <th>Timestamp</th>
         </tr>

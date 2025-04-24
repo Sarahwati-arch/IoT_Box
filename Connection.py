@@ -34,7 +34,7 @@ def on_message(client, userdata, msg):
         val = (message, msg.topic)
         cursor.execute(sql, val)
         db.commit()
-        print("Saved to fire_events ✅")
+        print("Saved to fire_events")
 
     elif msg.topic == water:
         # Insert into water_events table
@@ -42,7 +42,7 @@ def on_message(client, userdata, msg):
         val = (message, msg.topic)
         cursor.execute(sql, val)
         db.commit()
-        print("Saved to water_events ✅")
+        print("Saved to water_events")
 
 
 # MQTT setup
