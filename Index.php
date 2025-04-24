@@ -24,7 +24,6 @@ $result = $conn->query($sql);
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<body>
     <h1 class="dashboard-title">
         <img src="logo.png" alt="IoT Icon"> IoT Sensor Dashboard
     </h1>
@@ -40,15 +39,20 @@ $result = $conn->query($sql);
         <?php
         if ($result->num_rows > 0) {
             while($row = $result->fetch_assoc()) {
-                $fireClass = ($row["status"] == "🔥 Fire Detected! 🔥") ? "fire" : "safe";
-                $waterClass = (strpos($row["water_status"], "No") !== false) ? "nowater" : "safe";
+                $status = $row["status"] ?? "Unknown";
+                $waterStatus = $row["water_status"] ?? "N/A";
+                $distance = $row["distance_cm"] ?? "N/A";
+
+                $fireClass = ($status == "🔥 Fire Detected! 🔥") ? "fire" : "safe";
+                $waterClass = (strpos($waterStatus, "No") !== false) ? "nowater" : "safe";
+
                 echo "<tr>
-                    <td>" . $row["id"] . "</td>
-                    <td class='$fireClass'>" . $row["status"] . "</td>
-                    <td class='$waterClass'>" . $row["water_status"] . "</td>
-                    <td>" . $row["distance_cm"] . "</td>
-                    <td>" . $row["topic"] . "</td>
-                    <td>" . $row["timestamp"] . "</td>
+                    <td>" . ($row["id"] ?? "-") . "</td>
+                    <td class='$fireClass'>" . $status . "</td>
+                    <td class='$waterClass'>" . $waterStatus . "</td>
+                    <td>" . $distance . "</td>
+                    <td>" . ($row["topic"] ?? "-") . "</td>
+                    <td>" . ($row["timestamp"] ?? "-") . "</td>
                 </tr>";
             }
         } else {
