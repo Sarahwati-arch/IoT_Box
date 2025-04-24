@@ -18,7 +18,7 @@ th, td {
 }
 
 th {
-    background-color: #333;
+    background-color: #1c1b1b;
     color: white;
 }
 
@@ -45,6 +45,6 @@ th {
 }
 
 .dashboard-title img {
-    width: 50px;
+    width: 70px;
     vertical-align: middle;
 }
