@@ -12,7 +12,7 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-$sql = "SELECT * FROM fire_events ORDER BY timestamp DESC";
+$sql = "SELECT * FROM fire_events ORDER BY timestamp DESC limit 100";
 $result = $conn->query($sql);
 ?>
 
