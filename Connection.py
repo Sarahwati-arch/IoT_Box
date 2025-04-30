@@ -2,23 +2,28 @@ import paho.mqtt.client as mqtt
 import mysql.connector
 from datetime import datetime
 
-# MQTT settings
 broker = "broker.emqx.io"
 port = 1883
-fire = "fire_sensor"  # Topic for fire sensor
-water = "water_sensor"  # Topic for water sensor
-motion = "motion_sensor"  # Topic for motion sensor
 
+topics = {
+    "fire": "sensor/fire",
+    "machine": "sensor/machine",
+    "water": "sensor/water",
+    "motion": "sensor/motion"
+}
 
-# Called when connected to the broker
+machine_on_time = None
+
 def on_connect(client, userdata, flags, rc):
     print("Connected to MQTT Broker!")
-    client.subscribe([(fire, 0), (water, 0), (motion, 0)])
+    for t in topics.values():
+        client.subscribe(t)
 
-# Called when a message is received
 def on_message(client, userdata, msg):
-    message = msg.payload.decode()
-    print(f"Received: {message} on topic {msg.topic}")
+    global machine_on_time
+    message = msg.payload.decode().lower()
+    topic = msg.topic
+    now = datetime.now()
 
     try:
         db = mysql.connector.connect(
@@ -29,38 +34,36 @@ def on_message(client, userdata, msg):
         )
         cursor = db.cursor()
 
-        # Fire sensor data insertion
-        if msg.topic == fire:
+        if topic == topics["fire"]:
             sql = "INSERT INTO fire_sensor (fire_status) VALUES (%s)"
-            val = (message,)
-            cursor.execute(sql, val)
-            db.commit()
-            print("Saved to fire_sensor")
+            cursor.execute(sql, (message,))
 
-        # Water sensor data insertion
-        elif msg.topic == water:
+        elif topic == topics["machine"]:
+            if message == "on":
+                machine_on_time = now
+            elif message == "off" and machine_on_time:
+                runtime = now - machine_on_time
+                runtime_str = str(runtime).split('.')[0]
+                sql = "INSERT INTO runtime (machine_on, machine_off, runtime) VALUES (%s, %s, %s)"
+                cursor.execute(sql, (machine_on_time, now, runtime_str))
+                machine_on_time = None
+
+        elif topic == topics["water"]:
             sql = "INSERT INTO water_sensor (water_status) VALUES (%s)"
-            val = (message,)
-            cursor.execute(sql, val)
-            db.commit()
-            print("Saved to water_sensor")
+            cursor.execute(sql, (message,))
 
-        # Motion sensor data insertion
-        elif msg.topic == motion:
+        elif topic == topics["motion"]:
             sql = "INSERT INTO motion_sensor (motion_status) VALUES (%s)"
-            val = (message,)
-            cursor.execute(sql, val)
-            db.commit()
-            print("Saved to motion_sensor")
+            cursor.execute(sql, (message,))
+
+        db.commit()
 
     except Exception as e:
-        print(" Error:", e)
-
+        print("Database error:", e)
     finally:
         if db.is_connected():
             cursor.close()
             db.close()
-            print("Database connection closed.")
 
 # MQTT setup
 client = mqtt.Client()
@@ -70,6 +73,5 @@ client.on_message = on_message
 try:
     client.connect(broker, port, 60)
     client.loop_forever()
-
 except KeyboardInterrupt:
-    print("Disconnected manually.")
+    print("Disconnected.")

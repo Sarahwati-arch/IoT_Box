@@ -1,74 +1,142 @@
 <?php
 $host = "localhost";
 $user = "root";
-$pass = ""; // leave empty if no password
+$pass = "";
 $dbname = "iotboxtest";
 
-// Create connection
 $conn = new mysqli($host, $user, $pass, $dbname);
-
-// Check connection
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-$sql = "SELECT id, fire_status, timestamp FROM fire_sensor ORDER BY timestamp DESC limit 100";
-$sql = "SELECT id, water_status, timestamp FROM water_sensor ORDER BY timestamp DESC limit 100";
-$sql = "SELECT id, motion_status, timestamp FROM motion_sensor ORDER BY timestamp DESC limit 100";
-$result = $conn->query($sql);   
+$sql = "SELECT 
+            f.id,
+            f.fire_status,
+            w.water_status,
+            m.motion_status,
+            r.status AS machine_status,
+            f.timestamp
+        FROM fire_sensor f
+        JOIN water_sensor w ON f.id = w.id
+        JOIN motion_sensor m ON f.id = m.id
+        JOIN runtime r ON f.id = r.id
+        ORDER BY f.timestamp DESC
+        LIMIT 100";
+
+// Ambil data sensor
+$fireResult = $conn->query("SELECT fire_status, timestamp FROM fire_sensor ORDER BY timestamp DESC LIMIT 100");
+$waterResult = $conn->query("SELECT water_status FROM water_sensor ORDER BY timestamp DESC LIMIT 100");
+$motionResult = $conn->query("SELECT motion_status FROM motion_sensor ORDER BY timestamp DESC LIMIT 100");
+
+// Ambil data machine
+$machineResult = $conn->query("SELECT machine_on, machine_off, runtime, timestamp FROM machine_runtime ORDER BY timestamp DESC LIMIT 100");
+
+
+
+
+// Gabungkan data sensor
+$rows = [];
+$i = 0;
+while ($f = $fireResult->fetch_assoc()) {
+    $rows[$i]['fire'] = $f['fire_status'];
+    $rows[$i]['timestamp'] = $f['timestamp'];
+    $i++;
+}
+$i = 0;
+while ($w = $waterResult->fetch_assoc()) {
+    $rows[$i]['water'] = $w['water_status'];
+    $i++;
+}
+$i = 0;
+while ($m = $motionResult->fetch_assoc()) {
+    $rows[$i]['motion'] = $m['motion_status'];
+    $i++;
+}
+
+// Gabungkan data machine
+$machines = [];
+while ($mc = $machineResult->fetch_assoc()) {
+    $machines[] = $mc;
+}
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
-    <title>IoT Box</title>
+    <title>IoT Dashboard</title>
     <link rel="icon" href="logo.png" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
+    
 </head>
 <body>
     <h1 class="dashboard-title">
-        <img src="logo.png" alt="IoT Icon"> IoT Sensor Dashboard
+        <img src="logo.png" alt="IoT Icon"> IoT Box Dashboard
     </h1>
+    <!-- Sensor Data -->
+    <div>
+        <h2>Sensor Data</h2>
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Fire Status</th>
+                <th>Water Status</th>
+                <th>Motion Status</th>
+                <th>Timestamp</th>
+            </tr>
+            <?php
+            foreach ($rows as $index => $row) {
+                $id = $index + 1;
+                $fire = $row['fire'] ?? 'N/A';
+                $water = $row['water'] ?? 'N/A';
+                $motion = $row['motion'] ?? 'N/A';
+                $timestamp = $row['timestamp'] ?? 'N/A';
+
+                $fireClass = ($fire == "Fire Detected!") ? "fire" : "safe";
+                $waterClass = (strpos(strtolower($water), "no") !== false) ? "nowater" : "safe";
+                $motionClass = ($motion == "yes") ? "moving" : "nomotion";
+
+                echo "<tr>
+                    <td>{$id}</td>
+                    <td class='$fireClass'>{$fire}</td>
+                    <td class='$waterClass'>{$water}</td>
+                    <td class='$motionClass'>{$motion}</td>
+                    <td>{$timestamp}</td>
+                </tr>";
+            }
+            ?>
+        </table>
+    </div>
+
+    <!-- Machine Runtime Data -->
+<div>
+    <h2>Machine Runtime</h2>
     <table>
         <tr>
             <th>ID</th>
-            <th>Fire Status</th>
-            <th>Water Status</th>
-            <th>Motion Status</th>
-            <th>on/off</th>
+            <th>Machine On</th>
+            <th>Machine Off</th>
+            <th>Runtime</th>
             <th>Timestamp</th>
         </tr>
         <?php
-        if ($result->num_rows > 0) {
-            while($row = $result->fetch_assoc()) {
-                $fireStatus = $row["fire_status"] ?? "No Fire"; 
-                $waterStatus = $row["water_status"] ?? "No Water";
-                $motionStatus = $row["motion_status"] ?? "No Motion";
+        foreach ($machines as $index => $mc) {
+            $id = $index + 1;
+            $on = $mc['machine_on'] ?? '-';
+            $off = $mc['machine_off'] ?? '-';
+            $runtime = $mc['runtime'] ?? '-';
+            $timestamp = $mc['timestamp'] ?? '-';
 
-                // Apply class for fire status
-                $fireClass = ($fireStatus == "Fire Detected!") ? "fire" : "safe";
-
-                // Apply class for water status
-                $waterClass = (strpos($waterStatus, "No") !== false) ? "nowater" : "safe";
-
-                // Apply class for motion status
-                $motionClass = (strpos($motionStatus, "No") !== false) ? "nomotion" : "moving";
-
-                echo "<tr>
-                    <td>" . ($row["id"] ?? "-") . "</td>
-                    <td class='$fireClass'>" . $fireStatus . "</td>
-                    <td class='$waterClass'>" . $waterStatus . "</td>
-                    <td class='$motionClass'>" . $motionStatus . "</td>
-                    <td>" . ($row["timestamp"] ?? "-") . "</td>
-                    <td>" . ($row["on/off"] ?? "-") . "</td>
-                </tr>";
-            }
-        } else {
-            echo "<tr><td colspan='5'>No data found</td></tr>";
+            echo "<tr>
+                <td>{$id}</td>
+                <td>{$on}</td>
+                <td>{$off}</td>
+                <td>{$runtime}</td>
+                <td>{$timestamp}</td>
+            </tr>";
         }
-        $conn->close();
         ?>
-
     </table>
+</div>
 </body>
 </html>
+<?php $conn->close(); ?>
