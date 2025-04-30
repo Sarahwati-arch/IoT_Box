@@ -2,7 +2,7 @@
 $host = "localhost";
 $user = "root";
 $pass = ""; // leave empty if no password
-$dbname = "iotboxx";
+$dbname = "iotboxtest";
 
 // Create connection
 $conn = new mysqli($host, $user, $pass, $dbname);
@@ -35,12 +35,13 @@ $result = $conn->query($sql);
             <th>Fire Status</th>
             <th>Water Status</th>
             <th>Motion Status</th>
+            <th>on/off</th>
             <th>Timestamp</th>
         </tr>
         <?php
         if ($result->num_rows > 0) {
             while($row = $result->fetch_assoc()) {
-                $fireStatus = $row["fire_status"] ?? "No Fire"; // Default if not detected
+                $fireStatus = $row["fire_status"] ?? "No Fire"; 
                 $waterStatus = $row["water_status"] ?? "No Water";
                 $motionStatus = $row["motion_status"] ?? "No Motion";
 
@@ -59,6 +60,7 @@ $result = $conn->query($sql);
                     <td class='$waterClass'>" . $waterStatus . "</td>
                     <td class='$motionClass'>" . $motionStatus . "</td>
                     <td>" . ($row["timestamp"] ?? "-") . "</td>
+                    <td>" . ($row["on/off"] ?? "-") . "</td>
                 </tr>";
             }
         } else {
