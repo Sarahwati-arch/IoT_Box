@@ -6,10 +6,10 @@ broker = "broker.emqx.io"
 port = 1883
 
 topics = {
-    "fire": "sensor/fire",
-    "machine": "sensor/machine",
-    "water": "sensor/water",
-    "motion": "sensor/motion"
+    "fire": "events/fire_events",
+    "machine": "events/machine_runtime",
+    "water": "events/water_events",
+    "motion": "events/motion_events"
 }
 
 machine_on_time = None
@@ -34,32 +34,39 @@ def on_message(client, userdata, msg):
         )
         cursor = db.cursor()
 
+        # Fire event
         if topic == topics["fire"]:
-            sql = "INSERT INTO fire_sensor (fire_status) VALUES (%s)"
-            cursor.execute(sql, (message,))
+            sql = "INSERT INTO fire_sensor (fire_status, timestamp) VALUES (%s, %s)"
+            cursor.execute(sql, (message, now))
 
+        # Machine event
         elif topic == topics["machine"]:
             if message == "on":
                 machine_on_time = now
             elif message == "off" and machine_on_time:
                 runtime = now - machine_on_time
                 runtime_str = str(runtime).split('.')[0]
-                sql = "INSERT INTO runtime (machine_on, machine_off, runtime) VALUES (%s, %s, %s)"
-                cursor.execute(sql, (machine_on_time, now, runtime_str))
+                sql = "INSERT INTO machine_runtime (machine_on, machine_off, runtime, timestamp) VALUES (%s, %s, %s, %s)"
+                cursor.execute(sql, (machine_on_time, now, runtime_str, now))
                 machine_on_time = None
 
+        # Water event
         elif topic == topics["water"]:
-            sql = "INSERT INTO water_sensor (water_status) VALUES (%s)"
-            cursor.execute(sql, (message,))
+            sql = "INSERT INTO water_sensor (water_status, timestamp) VALUES (%s, %s)"
+            cursor.execute(sql, (message, now))
 
+        # Motion event
         elif topic == topics["motion"]:
-            sql = "INSERT INTO motion_sensor (motion_status) VALUES (%s)"
-            cursor.execute(sql, (message,))
+            sql = "INSERT INTO motion_sensor (motion_status, timestamp) VALUES (%s, %s)"
+            cursor.execute(sql, (message, now))
 
+        # Commit changes once after all operations
         db.commit()
 
+    except mysql.connector.Error as e:
+        print(f"Database error: {e}")
     except Exception as e:
-        print("Database error:", e)
+        print(f"General error: {e}")
     finally:
         if db.is_connected():
             cursor.close()
