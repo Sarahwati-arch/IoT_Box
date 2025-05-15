@@ -157,8 +157,7 @@ th {
 
 .nowater {
     background-color: #e3f2fd;
-    color: #c01515;
-    font-weight: bold;
+    color: #152fc0;
 }
 
 .moving {
@@ -170,7 +169,6 @@ th {
 .nomotion {
     background-color: #e0f2f1;
     color: #690000;
-    font-weight: bold;
 }
 
 /* Mobile-first (stacked) layout adjustment */
