@@ -1,93 +1,112 @@
 import paho.mqtt.client as mqtt
+from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, db
-import json
-from datetime import datetime
+
+broker = "broker.emqx.io"
+port = 1883
+
+topics = {
+    "fire": "events/fire_events",
+    "machine": "events/machine_runtime",
+    "motion": "events/motion_events",
+    "temperature": "events/temperature_events",
+    "vibration": "events/vibration_events"
+}
+
+machine_on_time = None
 
 # Inisialisasi Firebase
-cred = credentials.Certificate("C:\\Users\\HP\\Downloads\\iotboxdatabase-firebase-adminsdk-fbsvc-d340373f18.json")  # Ganti nama file sesuai milikmu
+cred = credentials.Certificate("C:\\Users\\HP\\Downloads\\iotboxdatabase-firebase-adminsdk-fbsvc-d340373f18.json")
 firebase_admin.initialize_app(cred, {
-    "databaseURL": "https://your-project-id.firebaseio.com/"  # Ganti dengan URL Firebase kamu
+    'databaseURL': 'https://iotboxdatabase-default-rtdb.asia-southeast1.firebasedatabase.app'
 })
 
-# Fungsi ketika berhasil terhubung ke broker MQTT
+# Buffer data sensor dan waktu penerimaan
+sensor_data = {
+    "fire": None,
+    "motion": None,
+    "temperature": None,
+    "vibration": None
+}
+sensor_time = {
+    "fire": None,
+    "motion": None,
+    "temperature": None,
+    "vibration": None
+}
+
+THRESHOLD_SECONDS = 5  # toleransi waktu supaya data dianggap "berkaitan"
+
+def try_push_combined_data():
+    # Pastikan semua sensor sudah punya data
+    if all(sensor_data[s] is not None for s in sensor_data):
+        times = [sensor_time[s] for s in sensor_time]
+        # Cek apakah waktu data semua sensor beda kurang dari threshold
+        if max(times) - min(times) <= timedelta(seconds=THRESHOLD_SECONDS):
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            data = {
+                "fire": sensor_data["fire"],
+                "motion": sensor_data["motion"],
+                "temperature": sensor_data["temperature"],
+                "vibration": sensor_data["vibration"],
+                "timestamp": now
+            }
+            db.reference("sensor_data").push(data)
+            print(f"[DATA PUSHED] {data}")
+
 def on_connect(client, userdata, flags, rc):
-    print("Connected to MQTT Broker with result code " + str(rc))
-    client.subscribe("events/sensor_data")
-    client.subscribe("events/machine_runtime")
+    print("Connected to MQTT Broker")
+    for t in topics.values():
+        client.subscribe(t)
 
-# Fungsi ketika menerima pesan MQTT
 def on_message(client, userdata, msg):
+    global machine_on_time
     topic = msg.topic
-    payload = msg.payload.decode()
+    message = msg.payload.decode()
+    now = datetime.now()
 
-    if topic == "events/sensor_data":
-        try:
-            data = json.loads(payload)
-            fire = data.get("fire")
-            motion = data.get("motion")
-            temperature = data.get("temperature")
-            vibration = data.get("vibration")
+    print(f"[{topic}] {message} @ {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
-            if fire is not None and motion is not None and temperature is not None and vibration is not None:
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if topic == topics["fire"]:
+        sensor_data["fire"] = message
+        sensor_time["fire"] = now
+        try_push_combined_data()
 
-                sensor_log = {
-                    "fire": fire,
-                    "motion": motion,
-                    "temperature": temperature,
-                    "vibration": vibration,
-                    "timestamp": timestamp
-                }
+    elif topic == topics["motion"]:
+        sensor_data["motion"] = message
+        sensor_time["motion"] = now
+        try_push_combined_data()
 
-                db.reference("sensor_data").push(sensor_log)
-                print(f"[SENSOR] Data ditambahkan: {sensor_log}")
-            else:
-                print("[SENSOR] Data tidak lengkap:", data)
+    elif topic == topics["temperature"]:
+        sensor_data["temperature"] = message
+        sensor_time["temperature"] = now
+        try_push_combined_data()
 
-        except Exception as e:
-            print("Error parsing sensor_data:", e)
+    elif topic == topics["vibration"]:
+        sensor_data["vibration"] = message
+        sensor_time["vibration"] = now
+        try_push_combined_data()
 
-    elif topic == "events/machine_runtime":
-        try:
-            data = json.loads(payload)
-            runtime = data.get("runtime")  # format: 00:05:41
-            status = data.get("status")    # format: "on" atau "off"
+    elif topic == topics["machine"]:
+        if message.lower() == 'on':
+            machine_on_time = now
+        elif message.lower() == 'off' and machine_on_time:
+            machine_off_time = now
+            runtime = machine_off_time - machine_on_time
+            runtime_str = str(runtime).split('.')[0]
 
-            if runtime is not None and status is not None:
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+            db.reference("machine").push({
+                'on': machine_on_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'off': machine_off_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'runtime': runtime_str,
+                'timestamp': now.strftime('%Y-%m-%d %H:%M:%S')
+            })
+            machine_on_time = None
+            print(f"[MACHINE RUNTIME] {runtime_str}")
 
-                log_data = {
-                    "Machine On": status,
-                    "Runtime": runtime,
-                    "Timestamp": timestamp
-                }
-
-                ref = db.reference("machine")
-                existing_data = ref.get()
-
-                if existing_data:
-                    existing_ids = [int(key) for key in existing_data.keys() if key.isdigit()]
-                    new_id = max(existing_ids) + 1
-                else:
-                    new_id = 1
-
-                ref.child(str(new_id)).set(log_data)
-                print(f"[MACHINE] Data disimpan dengan ID {new_id}: {log_data}")
-
-            else:
-                print("[MACHINE] Data tidak lengkap:", data)
-
-        except Exception as e:
-            print("Error parsing machine_runtime:", e)
-
-# Inisialisasi client MQTT
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
-
-# Koneksi ke broker MQTT
-client.connect("broker.hivemq.com", 1883, 60)
-
-# Loop forever
+client.connect(broker, port, 60)
 client.loop_forever()

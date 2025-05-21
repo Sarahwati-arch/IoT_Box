@@ -53,6 +53,7 @@
                     <th>Motion Status</th>
                     <th>Vibration</th>
                     <th>Timestamp</th>
+
                 </tr>
             </table>
         </div>
@@ -64,8 +65,8 @@
                 <tr>
                     <th>ID</th>
                     <th>Machine On</th>
+                    <th>Machine off</th>
                     <th>Runtime</th>
-                    <th>Timestamp</th>
                 </tr>
             </table>
         </div>
@@ -171,7 +172,7 @@ function updateRow(timestamp, type, value) {
                 <td>${data.on}</td>
                 <td>${data.off}</td>
                 <td>${data.runtime}</td>
-                <td>${data.timestamp}</td>
+                
             `;
 
             // Batasi maksimal 100 baris
