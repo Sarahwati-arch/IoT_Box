@@ -19,12 +19,12 @@
     </nav>
 
     <!-- Tipe Machine Scroll -->
-    <div class="main-content">
+    <div class="main-content">s
         <div class="left-box">
             <h2>Machine Type</h2>
             <div class="machine-scroll">
-                <a href="index.php" class="machine-card active-button">Injection Molding</a>
-                <a href="tes.html" class="machine-card">Painting & Detailing</a>
+                <a href="" class="machine-card active-button">Injection Molding</a>
+                <a href="#" class="machine-card">Painting & Detailing</a>
                 <a href="#" class="machine-card">Rooting</a>
                 <a href="#" class="machine-card">Hair Styling</a>
                 <a href="#" class="machine-card">Makeup</a>
@@ -200,21 +200,22 @@
             statusTextDiv.textContent = Status: ${statusText};
         });
 
-    window.addEventListener("DOMContentLoaded", () => {
+        // langsung jalankan tanpa tunggu DOMContentLoaded
         const machineCards = document.querySelectorAll(".machine-card");
 
         machineCards.forEach(card => {
             card.addEventListener("click", (e) => {
-                e.preventDefault();  // supaya klik gak langsung pindah halaman jika href="#"
-
-                // Hapus semua class active-button dari semua tombol
+                // Cegah reload halaman kalau href="#"
+                if (card.getAttribute("href") === "#") {
+                    e.preventDefault();
+                }
+                
+                // Hapus semua active-button
                 machineCards.forEach(c => c.classList.remove("active-button"));
-
-                // Tambahkan class active-button hanya pada tombol yang diklik
+                // Tambahkan active-button pada yang diklik
                 card.classList.add("active-button");
             });
         });
-    });
 
 
 </script>
