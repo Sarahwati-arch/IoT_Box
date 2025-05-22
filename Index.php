@@ -11,7 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 </head>
 <body>
-        <!-- Navbar -->
+    <!-- Navbar -->
     <nav class="navbar">
         <h1 class="dashboard-title">
             <img src="logo.png" alt="IoT Icon"/> IoT Box Dashboard
@@ -19,7 +19,7 @@
     </nav>
 
     <!-- Tipe Machine Scroll -->
-    <div class="main-content">s
+    <div class="main-content">
         <div class="left-box">
             <h2>Machine Type</h2>
             <div class="machine-scroll">
@@ -41,7 +41,7 @@
             <h2>Machine Status</h2>
             <div class="machine-container" id="machineStatusContainer">
                 <div class="machine-box unknown" id="machineStatusBox">
-                    <div id="statusText"> UNKNOWN</div>
+                    <div id="statusText">UNKNOWN</div>
                 </div>
             </div>
         </div>
@@ -60,7 +60,6 @@
                     <th>Motion Status</th>
                     <th>Vibration</th>
                     <th>Timestamp</th>
-
                 </tr>
             </table>
         </div>
@@ -72,7 +71,7 @@
                 <tr>
                     <th>ID</th>
                     <th>Machine On</th>
-                    <th>Machine off</th>
+                    <th>Machine Off</th>
                     <th>Runtime</th>
                 </tr>
             </table>
@@ -80,100 +79,99 @@
     </div>
 
     <!-- Firebase Realtime Update -->
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyCW_41f54-PLz5BUeuQaFTLW1gRQ52bNzE",
-        authDomain: "iotboxdatabase.firebaseapp.com",
-        databaseURL: "https://iotboxdatabase-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "iotboxdatabase",
-        storageBucket: "iotboxdatabase.appspot.com",
-        messagingSenderId: "990335288553",
-        appId: "1:990335288553:web:39bfddbe65f6ab80919c78",
-        measurementId: "G-VRSYECDQF3",
-    };
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCW_41f54-PLz5BUeuQaFTLW1gRQ52bNzE",
+            authDomain: "iotboxdatabase.firebaseapp.com",
+            databaseURL: "https://iotboxdatabase-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "iotboxdatabase",
+            storageBucket: "iotboxdatabase.appspot.com",
+            messagingSenderId: "990335288553",
+            appId: "1:990335288553:web:39bfddbe65f6ab80919c78",
+            measurementId: "G-VRSYECDQF3",
+        };
 
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-    // --- SENSOR DATA ---
-    const sensorTable = document.getElementById("sensorDataTable");
-    let rowDataMap = {};
-    let sensorRowCount = 0;
+        // --- SENSOR DATA ---
+        const sensorTable = document.getElementById("sensorDataTable");
+        let rowDataMap = {};
+        let sensorRowCount = 0;
 
-    function updateRow(timestamp, type, value) {
-        if (!rowDataMap[timestamp]) {
-            sensorRowCount++;
-            const row = sensorTable.insertRow(1);
-            const idCell = row.insertCell(0);
-            const fireCell = row.insertCell(1);
-            const tempCell = row.insertCell(2);
-            const motionCell = row.insertCell(3);
-            const vibrationCell = row.insertCell(4);
-            const timeCell = row.insertCell(5);
+        function updateRow(timestamp, type, value) {
+            if (!rowDataMap[timestamp]) {
+                sensorRowCount++;
+                const row = sensorTable.insertRow(1);
+                const idCell = row.insertCell(0);
+                const fireCell = row.insertCell(1);
+                const tempCell = row.insertCell(2);
+                const motionCell = row.insertCell(3);
+                const vibrationCell = row.insertCell(4);
+                const timeCell = row.insertCell(5);
 
-            idCell.textContent = sensorRowCount;
-            fireCell.textContent = "-";
-            tempCell.textContent = "-";
-            motionCell.textContent = "-";
-            vibrationCell.textContent = "-";
-            timeCell.textContent = timestamp;
+                idCell.textContent = sensorRowCount;
+                fireCell.textContent = "-";
+                tempCell.textContent = "-";
+                motionCell.textContent = "-";
+                vibrationCell.textContent = "-";
+                timeCell.textContent = timestamp;
 
-            rowDataMap[timestamp] = {
-                rowElement: row,
-                cells: {
-                    fire: fireCell,
-                    temperature: tempCell,
-                    motion: motionCell,
-                    vibration: vibrationCell,
-                },
-            };
+                rowDataMap[timestamp] = {
+                    rowElement: row,
+                    cells: {
+                        fire: fireCell,
+                        temperature: tempCell,
+                        motion: motionCell,
+                        vibration: vibrationCell,
+                    },
+                };
 
-            if (sensorTable.rows.length > 101) {
-                const lastRowIndex = sensorTable.rows.length - 1;
-                const lastTimestamp = sensorTable.rows[lastRowIndex].cells[5].textContent;
-                sensorTable.deleteRow(lastRowIndex);
-                delete rowDataMap[lastTimestamp];
+                if (sensorTable.rows.length > 101) {
+                    const lastRowIndex = sensorTable.rows.length - 1;
+                    const lastTimestamp = sensorTable.rows[lastRowIndex].cells[5].textContent;
+                    sensorTable.deleteRow(lastRowIndex);
+                    delete rowDataMap[lastTimestamp];
+                }
             }
+
+            const cells = rowDataMap[timestamp].cells;
+            if (type === "fire") cells.fire.textContent = value;
+            if (type === "temperature") cells.temperature.textContent = value;
+            if (type === "motion") cells.motion.textContent = value;
+            if (type === "vibration") cells.vibration.textContent = value;
         }
 
-        const cells = rowDataMap[timestamp].cells;
-        if (type === "fire") cells.fire.textContent = value;
-        if (type === "temperature") cells.temperature.textContent = value;
-        if (type === "motion") cells.motion.textContent = value;
-        if (type === "vibration") cells.vibration.textContent = value;
-    }
+        const sensorRef = database.ref("sensor_data");
+        sensorRef.on("child_added", (snapshot) => {
+            const data = snapshot.val();
+            updateRow(data.timestamp, "fire", data.fire);
+            updateRow(data.timestamp, "temperature", data.temperature);
+            updateRow(data.timestamp, "motion", data.motion);
+            updateRow(data.timestamp, "vibration", data.vibration);
+        });
 
-    const sensorRef = database.ref("sensor_data");
-    sensorRef.on("child_added", (snapshot) => {
-        const data = snapshot.val();
-        updateRow(data.timestamp, "fire", data.fire);
-        updateRow(data.timestamp, "temperature", data.temperature);
-        updateRow(data.timestamp, "motion", data.motion);
-        updateRow(data.timestamp, "vibration", data.vibration);
-    });
+        // --- MACHINE RUNTIME ---
+        const runtimeTable = document.getElementById("runtimeTable");
+        let runtimeRowCount = 0;
 
-    // --- MACHINE RUNTIME ---
-    const runtimeTable = document.getElementById("runtimeTable");
-    let runtimeRowCount = 0;
+        const runtimeRef = database.ref("machine");
+        runtimeRef.on("child_added", (snapshot) => {
+            const data = snapshot.val();
+            runtimeRowCount++;
+            const row = runtimeTable.insertRow(1);
+            row.innerHTML = `
+                <td>${runtimeRowCount}</td>
+                <td>${data.on}</td>
+                <td>${data.off}</td>
+                <td>${data.runtime}</td>
+            `;
 
-    const runtimeRef = database.ref("machine");
-    runtimeRef.on("child_added", (snapshot) => {
-        const data = snapshot.val();
-        runtimeRowCount++;
-        const row = runtimeTable.insertRow(1);
-        row.innerHTML = `
-            <td>${runtimeRowCount}</td>
-            <td>${data.on}</td>
-            <td>${data.off}</td>
-            <td>${data.runtime}</td>
-        `;
+            if (runtimeTable.rows.length > 101) {
+                runtimeTable.deleteRow(runtimeTable.rows.length - 1);
+            }
+        });
 
-        if (runtimeTable.rows.length > 101) {
-            runtimeTable.deleteRow(runtimeTable.rows.length - 1);
-        }
-    });
-
-    // --- MACHINE STATUS DISPLAY ---
         // --- MACHINE STATUS DISPLAY ---
         const machineStatusBox = document.getElementById("machineStatusBox");
         const statusTextDiv = document.getElementById("statusText");
@@ -193,32 +191,29 @@
                 statusText = "OFF";
             }
 
-            // Update class without replacing innerHTML
-            machineStatusBox.className = machine-box ${statusClass};
+            // Update class with template literal string
+            machineStatusBox.className = `machine-box ${statusClass}`;
 
             // Update only the status text
-            statusTextDiv.textContent = Status: ${statusText};
+            statusTextDiv.textContent = `Status: ${statusText}`;
         });
 
-        // langsung jalankan tanpa tunggu DOMContentLoaded
+        // --- BUTTON ACTIVE STATE ---
         const machineCards = document.querySelectorAll(".machine-card");
 
         machineCards.forEach(card => {
             card.addEventListener("click", (e) => {
-                // Cegah reload halaman kalau href="#"
-                if (card.getAttribute("href") === "#") {
+                const href = card.getAttribute("href");
+                if (!href || href === "#") {
                     e.preventDefault();
                 }
-                
-                // Hapus semua active-button
+
+                // Remove active-button class from all
                 machineCards.forEach(c => c.classList.remove("active-button"));
-                // Tambahkan active-button pada yang diklik
+                // Add active-button class to clicked
                 card.classList.add("active-button");
             });
         });
-
-
-</script>
-
+    </script>
 </body>
 </html>
