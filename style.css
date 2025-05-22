@@ -1,50 +1,199 @@
+/* Reset & base styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 body {
-    font-family: Arial;
-    background: #f2f2f2;
-    padding: 30px;
+    background-color: #f4f7f9;
+    color: #333;
+    padding: 20px;
 }
 
-table {
-    border-collapse: collapse;
-    width: 100%;
-    background: #fff;
-    box-shadow: 0 0 10px #ccc;
-}
-
-th, td {
-    padding: 10px;
-    border: 1px solid #ddd;
-    text-align: center;
-}
-
-th {
-    background-color: #333;
-    color: white;
-}
-
-.fire {
-    color: red;
-    font-weight: bold;
-}
-
-.safe {
-    color: green;
-    font-weight: bold;
-}
-
-.nowater {
-    color: blue;
-    font-weight: bold;
+/* Navbar */
+.navbar {
+    background-color: #837878;
+    padding: 15px 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .dashboard-title {
-    font-size: 28px;
+    color: white;
+    font-size: 26px;
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
 .dashboard-title img {
-    width: 50px;
-    vertical-align: middle;
+    width: 30px;
+    height: 30px;
+}
+
+/* Layout structure */
+.main-content {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+}
+
+.left-box, .right-box {
+    flex: 1;
+    max-width: 48%;
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    min-width: 300px;
+}
+
+/* Section titles */
+h2 {
+    margin-bottom: 15px;
+    font-size: 20px;
+    color: #501717;
+}
+
+/* Styling untuk masing-masing Machine Box */
+.machine-box {
+    min-width: 80px;
+    padding: 10px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    top: -8px;        /* geser secara visual ke atas */
+}
+
+
+/* Styling berdasarkan status */
+.machine-box.on {
+    background-color: #e8f5e9;
+    color: #388e3c;
+    border: 2px solid #388e3c;
+}
+
+.machine-box.off {
+    background-color: #ffebee;
+    color: #d32f2f;
+    border: 2px solid #d32f2f;
+}
+
+.machine-box.unknown {
+    background-color: #eeeeee;
+    color: #555555;
+    border: 2px solid #999999;
+}
+.machine-box.unknown:hover {
+    background-color: #e0e0e0;
+}
+
+
+/* Container untuk Machine Box dengan scroll horizontal */
+.machine-container {
+    display: flex;
+    flex-wrap: nowrap;  /* Jangan wrap, biar box tetap berada dalam satu baris */
+    gap: 20px;
+    overflow-x: auto;  /* Enable scroll horizontal */
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+/* Machine scroll list */
+.machine-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.machine-card {
+    flex: 0 0 auto;
+    padding: 12px 18px;
+    background-color: #e3f2fd;
+    color: #d21919;
+    text-decoration: none;
+    border-radius: 8px;
+    border: 1px solid #f99090;
+    transition: background-color 0.3s;
+}
+
+.machine-card:hover {
+    background-color: #fbbbbb;
+}
+
+.machine-card.active-button {
+    background-color: #fbbbbb ;
+    color: white;
+    font-weight: bold;
+    border: 2px solid #f99090 !important;
+}
+
+
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+th, td {
+    padding: 10px;
+    text-align: center;
+    border: 1px solid #ccc;
+}
+
+th {
+    background-color: #f0f0f0;
+    font-weight: 600;
+}
+
+/* Sensor status colors */
+.fire {
+    background-color: #ffebee;
+    color: #c62828;
+    font-weight: bold;
+}
+
+.safe {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.nowater {
+    background-color: #e3f2fd;
+    color: #152fc0;
+}
+
+.moving {
+    background-color: #fff3e0;
+    color: #ef0000;
+    font-weight: bold;
+}
+
+.nomotion {
+    background-color: #e0f2f1;
+    color: #690000;
+}
+
+/* Mobile-first (stacked) layout adjustment */
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;  /* Stack the items vertically */
+    }
+
+    .left-box, .right-box {
+        width: 100%;  /* Ensure full width for both left and right boxes */
+    }
 }

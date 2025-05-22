@@ -1,64 +1,112 @@
 import paho.mqtt.client as mqtt
-import mysql.connector
-from datetime import datetime
+from datetime import datetime, timedelta
+import firebase_admin
+from firebase_admin import credentials, db
 
-# MQTT settings
 broker = "broker.emqx.io"
 port = 1883
-fire = "fire"  # Topic for fire events
-water = "water"  # Topic for water events
 
+topics = {
+    "fire": "events/fire_events",
+    "machine": "events/machine_runtime",
+    "motion": "events/motion_events",
+    "temperature": "events/temperature_events",
+    "vibration": "events/vibration_events"
+}
 
-# MySQL settings
-db = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="",  # Replace if you set a password in XAMPP
-    database="IoT_Box"
-)
-cursor = db.cursor()
+machine_on_time = None
 
-# Called when connected to the broker
+# Inisialisasi Firebase
+cred = credentials.Certificate("C:\\Users\\Irsyah\\Downloads\\iotboxdatabase-firebase-adminsdk-fbsvc-596ab6c560.json")
+firebase_admin.initialize_app(cred, {
+    'databaseURL': 'https://iotboxdatabase-default-rtdb.asia-southeast1.firebasedatabase.app'
+})
+
+# Buffer data sensor dan waktu penerimaan
+sensor_data = {
+    "fire": None,
+    "motion": None,
+    "temperature": None,
+    "vibration": None
+}
+sensor_time = {
+    "fire": None,
+    "motion": None,
+    "temperature": None,
+    "vibration": None
+}
+
+THRESHOLD_SECONDS = 5  # toleransi waktu supaya data dianggap "berkaitan"
+
+def try_push_combined_data():
+    # Pastikan semua sensor sudah punya data
+    if all(sensor_data[s] is not None for s in sensor_data):
+        times = [sensor_time[s] for s in sensor_time]
+        # Cek apakah waktu data semua sensor beda kurang dari threshold
+        if max(times) - min(times) <= timedelta(seconds=THRESHOLD_SECONDS):
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            data = {
+                "fire": sensor_data["fire"],
+                "motion": sensor_data["motion"],
+                "temperature": sensor_data["temperature"],
+                "vibration": sensor_data["vibration"],
+                "timestamp": now
+            }
+            db.reference("sensor_data").push(data)
+            print(f"[DATA PUSHED] {data}")
+
 def on_connect(client, userdata, flags, rc):
-    print("Connected to MQTT Broker!")
-    client.subscribe([(fire, 0), (water, 0),])
+    print("Connected to MQTT Broker")
+    for t in topics.values():
+        client.subscribe(t)
 
-# Called when a message is received
 def on_message(client, userdata, msg):
+    global machine_on_time
+    topic = msg.topic
     message = msg.payload.decode()
-    print(f"Received: {message} on topic {msg.topic}")
+    now = datetime.now()
 
-    if msg.topic == fire:
-        # Insert into fire_events table
-        sql = "INSERT INTO fire_events (status, topic) VALUES (%s, %s)"
-        val = (message, msg.topic)
-        cursor.execute(sql, val)
-        db.commit()
-        print("Saved to fire_events ")
+    print(f"[{topic}] {message} @ {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
-    elif msg.topic == water:
-        # Insert into water_events table
-        sql = "INSERT INTO water_events (status, topic) VALUES (%s, %s)"
-        val = (message, msg.topic)
-        cursor.execute(sql, val)
-        db.commit()
-        print("Saved to water_events ")
+    if topic == topics["fire"]:
+        sensor_data["fire"] = message
+        sensor_time["fire"] = now
+        try_push_combined_data()
 
+    elif topic == topics["motion"]:
+        sensor_data["motion"] = message
+        sensor_time["motion"] = now
+        try_push_combined_data()
 
-# MQTT setup
+    elif topic == topics["temperature"]:
+        sensor_data["temperature"] = message
+        sensor_time["temperature"] = now
+        try_push_combined_data()
+
+    elif topic == topics["vibration"]:
+        sensor_data["vibration"] = message
+        sensor_time["vibration"] = now
+        try_push_combined_data()
+
+    elif topic == topics["machine"]:
+        if message.lower() == 'on':
+            machine_on_time = now
+        elif message.lower() == 'off' and machine_on_time:
+            machine_off_time = now
+            runtime = machine_off_time - machine_on_time
+            runtime_str = str(runtime).split('.')[0]
+
+            db.reference("machine").push({
+                'on': machine_on_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'off': machine_off_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'runtime': runtime_str,
+                'timestamp': now.strftime('%Y-%m-%d %H:%M:%S')
+            })
+            machine_on_time = None
+            print(f"[MACHINE RUNTIME] {runtime_str}")
+
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
-
-try:
-    client.connect(broker, port, 60)
-    client.loop_forever()
-
-except KeyboardInterrupt:
-    print("Disconnected manually.")
-
-finally:
-    if db.is_connected():
-        cursor.close()
-        db.close()
-        print("Database connection closed.")
+client.connect(broker, port, 60)
+client.loop_forever()
