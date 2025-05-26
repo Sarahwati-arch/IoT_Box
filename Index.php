@@ -159,12 +159,16 @@
         runtimeRef.on("child_added", (snapshot) => {
             const data = snapshot.val();
             runtimeRowCount++;
+            // Tampilkan tanda "-" kalau off atau runtime belum ada
+            const offDisplay = data.off && data.off !== "" ? data.off : "-";
+            const runtimeDisplay = data.runtime && data.runtime !== "" ? data.runtime : "-";
+
             const row = runtimeTable.insertRow(1);
             row.innerHTML = `
                 <td>${runtimeRowCount}</td>
                 <td>${data.on}</td>
-                <td>${data.off}</td>
-                <td>${data.runtime}</td>
+                <td>${offDisplay}</td>
+                <td>${runtimeDisplay}</td>
             `;
 
             if (runtimeTable.rows.length > 101) {
@@ -183,20 +187,19 @@
             let statusClass = "unknown";
             let statusText = "UNKNOWN";
 
+            // Update status berdasarkan apakah off masih kosong atau sudah ada
             if (data.on && (!data.off || data.off === "")) {
                 statusClass = "on";
                 statusText = "ON";
-            } else if (data.off) {
+            } else if (data.off && data.off !== "") {
                 statusClass = "off";
                 statusText = "OFF";
             }
 
-            // Update class with template literal string
-            machineStatusBox.className = `machine-box ${statusClass}`;
-
-            // Update only the status text
-            statusTextDiv.textContent = `Status: ${statusText}`;
+            machineStatusBox.className = machine-box ${statusClass};
+            statusTextDiv.textContent = Status: ${statusText};
         });
+
 
         // --- BUTTON ACTIVE STATE ---
         const machineCards = document.querySelectorAll(".machine-card");

@@ -2,6 +2,8 @@ import paho.mqtt.client as mqtt
 from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, db
+import threading
+import time
 
 broker = "broker.emqx.io"
 port = 1883
@@ -15,14 +17,14 @@ topics = {
 }
 
 machine_on_time = None
-
-# Inisialisasi Firebase
-cred = credentials.Certificate("C:\\Users\\Irsyah\\Downloads\\iotboxdatabase-firebase-adminsdk-fbsvc-596ab6c560.json")
+machine_off_recorded = True
+last_sensor_activity_time = None
+# Firebase Initialization
+cred = credentials.Certificate("C:\\Users\\HP\\Downloads\\iotboxdatabase-firebase-adminsdk-fbsvc-d340373f18.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://iotboxdatabase-default-rtdb.asia-southeast1.firebasedatabase.app'
 })
 
-# Buffer data sensor dan waktu penerimaan
 sensor_data = {
     "fire": None,
     "motion": None,
@@ -36,13 +38,12 @@ sensor_time = {
     "vibration": None
 }
 
-THRESHOLD_SECONDS = 5  # toleransi waktu supaya data dianggap "berkaitan"
+THRESHOLD_SECONDS = 5
+MACHINE_TIMEOUT_SECONDS = 30
 
 def try_push_combined_data():
-    # Pastikan semua sensor sudah punya data
     if all(sensor_data[s] is not None for s in sensor_data):
         times = [sensor_time[s] for s in sensor_time]
-        # Cek apakah waktu data semua sensor beda kurang dari threshold
         if max(times) - min(times) <= timedelta(seconds=THRESHOLD_SECONDS):
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             data = {
@@ -55,58 +56,99 @@ def try_push_combined_data():
             db.reference("sensor_data").push(data)
             print(f"[DATA PUSHED] {data}")
 
+def machine_timeout_checker():
+    global machine_on_time, machine_off_recorded
+    while True:
+        if machine_on_time and not machine_off_recorded:
+            now = datetime.now()
+            if last_sensor_activity_time and (now - last_sensor_activity_time).total_seconds() > MACHINE_TIMEOUT_SECONDS:
+                machine_off_time = now
+                runtime = machine_off_time - machine_on_time
+                runtime_str = str(runtime).split('.')[0]
+
+                ref = db.reference("machine")
+                all_records = ref.order_by_key().limit_to_last(1).get()
+                if all_records:
+                    last_key = list(all_records.keys())[0]
+                    last_record = all_records[last_key]
+                    if last_record.get('off') is None:
+                        ref.child(last_key).update({
+                            'off': machine_off_time.strftime('%Y-%m-%d %H:%M:%S'),
+                            'runtime': runtime_str
+                        })
+                        print(f"[TIMEOUT OFF] Machine off by timeout. Runtime: {runtime_str}")
+
+                machine_on_time = None
+                machine_off_recorded = True
+        time.sleep(1)
+
 def on_connect(client, userdata, flags, rc):
     print("Connected to MQTT Broker")
     for t in topics.values():
         client.subscribe(t)
 
 def on_message(client, userdata, msg):
-    global machine_on_time
+    global machine_on_time, machine_off_recorded, last_sensor_activity_time
     topic = msg.topic
     message = msg.payload.decode()
     now = datetime.now()
 
     print(f"[{topic}] {message} @ {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
-    if topic == topics["fire"]:
-        sensor_data["fire"] = message
-        sensor_time["fire"] = now
-        try_push_combined_data()
-
-    elif topic == topics["motion"]:
-        sensor_data["motion"] = message
-        sensor_time["motion"] = now
-        try_push_combined_data()
-
-    elif topic == topics["temperature"]:
-        sensor_data["temperature"] = message
-        sensor_time["temperature"] = now
-        try_push_combined_data()
-
-    elif topic == topics["vibration"]:
-        sensor_data["vibration"] = message
-        sensor_time["vibration"] = now
+    if topic in [topics["fire"], topics["motion"], topics["temperature"], topics["vibration"]]:
+        sensor_type = list(topics.keys())[list(topics.values()).index(topic)]
+        sensor_data[sensor_type] = message
+        sensor_time[sensor_type] = now
+        last_sensor_activity_time = now
         try_push_combined_data()
 
     elif topic == topics["machine"]:
-        if message.lower() == 'on':
-            machine_on_time = now
-        elif message.lower() == 'off' and machine_on_time:
-            machine_off_time = now
+        try:
+            status, timestr = message.split("|")
+            time_event = datetime.strptime(timestr, "%Y-%m-%dT%H:%M:%S")
+        except Exception as e:
+            print(f"[ERROR parsing machine_runtime] {e}")
+            return
+
+        if status == 'on':
+            if machine_on_time is None:
+                machine_on_time = time_event
+                machine_off_recorded = False
+                last_sensor_activity_time = time_event
+
+                db.reference("machine").push({
+                    'on': machine_on_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'off': None,
+                    'runtime': None
+                })
+                print(f"[MACHINE ON] {machine_on_time}")
+            else:
+                print("[IGNORED] Machine already ON")
+
+        elif status == 'off' and machine_on_time:
+            machine_off_time = time_event
             runtime = machine_off_time - machine_on_time
             runtime_str = str(runtime).split('.')[0]
 
-            db.reference("machine").push({
-                'on': machine_on_time.strftime('%Y-%m-%d %H:%M:%S'),
-                'off': machine_off_time.strftime('%Y-%m-%d %H:%M:%S'),
-                'runtime': runtime_str,
-                'timestamp': now.strftime('%Y-%m-%d %H:%M:%S')
-            })
+            ref = db.reference("machine")
+            all_records = ref.order_by_key().limit_to_last(1).get()
+            if all_records:
+                last_key = list(all_records.keys())[0]
+                last_record = all_records[last_key]
+                if last_record.get('off') is None:
+                    ref.child(last_key).update({
+                        'off': machine_off_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        'runtime': runtime_str
+                    })
+                    print(f"[MACHINE OFF] {machine_off_time}, Runtime: {runtime_str}")
+
             machine_on_time = None
-            print(f"[MACHINE RUNTIME] {runtime_str}")
+            machine_off_recorded = True
 
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
 client.connect(broker, port, 60)
+
+threading.Thread(target=machine_timeout_checker, daemon=True).start()
 client.loop_forever()
