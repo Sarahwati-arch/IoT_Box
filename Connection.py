@@ -19,8 +19,9 @@ topics = {
 machine_on_time = None
 machine_off_recorded = True
 last_sensor_activity_time = None
-# Firebase Initialization
-cred = credentials.Certificate("C:\\Users\\HP\\Downloads\\iotboxdatabase-firebase-adminsdk-fbsvc-d340373f18.json")
+
+# Inisialisasi Firebase
+cred = credentials.Certificate("C:\\Users\\Irsyah\\Downloads\\iotboxdatabase-firebase-adminsdk-fbsvc-596ab6c560.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://iotboxdatabase-default-rtdb.asia-southeast1.firebasedatabase.app'
 })

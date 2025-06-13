@@ -9,6 +9,38 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    
+<style>
+/* Machine scroll list */
+.machine-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.machine-card {
+    flex: 0 0 auto;
+    padding: 12px 18px;
+    background-color: #e3f2fd;
+    color: #d21919;
+    text-decoration: none;
+    border-radius: 8px;
+    border: 1px solid #f99090;
+    transition: background-color 0.3s;
+}
+
+.machine-card:hover {
+    background-color: #fbbbbb;
+}
+
+.machine-card.active-button {
+    background-color: #fbbbbb ;
+    color: white;
+    font-weight: bold;
+    border: 2px solid #f99090 !important;
+}
+</style>
 </head>
 <body>
     <!-- Navbar -->
@@ -23,16 +55,16 @@
         <div class="left-box">
             <h2>Machine Type</h2>
             <div class="machine-scroll">
-                <a href="" class="machine-card active-button">Injection Molding</a>
-                <a href="#" class="machine-card">Painting & Detailing</a>
-                <a href="#" class="machine-card">Rooting</a>
-                <a href="#" class="machine-card">Hair Styling</a>
-                <a href="#" class="machine-card">Makeup</a>
-                <a href="#" class="machine-card">Body Assembly</a>
-                <a href="#" class="machine-card">Sewing Machine (Outfit)</a>
-                <a href="#" class="machine-card">Assembly Machine</a>
-                <a href="#" class="machine-card">Quality Inspection</a>
-                <a href="#" class="machine-card">Packaging</a>
+                <a href="" class="machine-card" data-type="injection">Injection Molding</a>
+                <a href="#" class="machine-card" data-type="painting">Painting & Detailing</a>
+                <a href="#" class="machine-card" data-type="rooting">Rooting</a>
+                <a href="#" class="machine-card" data-type="hair">Hair Styling</a>
+                <a href="#" class="machine-card" data-type="makeup">Makeup</a>
+                <a href="#" class="machine-card" data-type="body">Body Assembly</a>
+                <a href="#" class="machine-card" data-type="sewing">Sewing Machine (Outfit)</a>
+                <a href="#" class="machine-card" data-type="assembly">Assembly Machine</a>
+                <a href="#" class="machine-card" data-type="quality">Quality Inspection</a>
+                <a href="#" class="machine-card" data-type="packaging">Packaging</a>
             </div>
         </div>
 
@@ -196,25 +228,35 @@
                 statusText = "OFF";
             }
 
-            machineStatusBox.className = machine-box ${statusClass};
-            statusTextDiv.textContent = Status: ${statusText};
+            machineStatusBox.className = `machine-box ${statusClass}`;
+            statusTextDiv.textContent = `Status: ${statusText}`;
+
         });
 
 
         // --- BUTTON ACTIVE STATE ---
-        const machineCards = document.querySelectorAll(".machine-card");
+        window.addEventListener('DOMContentLoaded', () => {
+            const machineCards = document.querySelectorAll('.machine-card');
 
-        machineCards.forEach(card => {
-            card.addEventListener("click", (e) => {
-                const href = card.getAttribute("href");
-                if (!href || href === "#") {
-                    e.preventDefault();
-                }
+            // 1. Injection Molding active saat pertama kali
+            const injectionCard = Array.from(machineCards).find(card =>
+            card.dataset.type === 'injection'
+            );
+            if (injectionCard) {
+            injectionCard.classList.add('active-button');
+            }
 
-                // Remove active-button class from all
-                machineCards.forEach(c => c.classList.remove("active-button"));
-                // Add active-button class to clicked
-                card.classList.add("active-button");
+            // 2. Tambahkan event listener ke semua button
+            machineCards.forEach(card => {
+            card.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                // Hapus semua yang active dulu
+                machineCards.forEach(c => c.classList.remove('active-button'));
+
+                // Kasih class active ke yang diklik
+                this.classList.add('active-button');
+            });
             });
         });
     </script>
