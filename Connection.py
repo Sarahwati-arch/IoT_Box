@@ -21,9 +21,9 @@ machine_off_recorded = True
 last_sensor_activity_time = None
 
 # Inisialisasi Firebase
-cred = credentials.Certificate("C:\\Users\\HP\\Downloads\\iotboxdatabase-firebase-adminsdk-fbsvc-d340373f18.json")
+cred = credentials.Certificate("C:\\Users\\HP\\Downloads\\iot-box-new-firebase-adminsdk-fbsvc-374ebd4ba3.json")
 firebase_admin.initialize_app(cred, {
-    'databaseURL': 'https://iotboxdatabase-default-rtdb.asia-southeast1.firebasedatabase.app'
+    'databaseURL': 'https://iot-box-new-default-rtdb.asia-southeast1.firebasedatabase.app/'
 })
 
 sensor_data = {
@@ -65,8 +65,16 @@ def machine_timeout_checker():
             if last_sensor_activity_time and (now - last_sensor_activity_time).total_seconds() > MACHINE_TIMEOUT_SECONDS:
                 machine_off_time = now
                 runtime = machine_off_time - machine_on_time
-                runtime_str = str(runtime).split('.')[0]
+                runtime_seconds = int(runtime.total_seconds())
 
+                # Update machine status to OFF
+                db.reference("status/machine").set({
+                    'status': 'OFF',
+                    'timestamp': machine_off_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'runtime': runtime_seconds
+                })
+
+                # Update machine runtime record
                 ref = db.reference("machine")
                 all_records = ref.order_by_key().limit_to_last(1).get()
                 if all_records:
@@ -75,9 +83,9 @@ def machine_timeout_checker():
                     if last_record.get('off') is None:
                         ref.child(last_key).update({
                             'off': machine_off_time.strftime('%Y-%m-%d %H:%M:%S'),
-                            'runtime': runtime_str
+                            'runtime': str(runtime).split('.')[0]
                         })
-                        print(f"[TIMEOUT OFF] Machine off by timeout. Runtime: {runtime_str}")
+                        print(f"[TIMEOUT OFF] Machine off by timeout. Runtime: {runtime_seconds} seconds")
 
                 machine_on_time = None
                 machine_off_recorded = True
@@ -117,10 +125,18 @@ def on_message(client, userdata, msg):
                 machine_off_recorded = False
                 last_sensor_activity_time = time_event
 
-                # Update status machine (real-time)
+                # Update status machine (real-time) - FIXED PATH
                 db.reference("status/machine").set({
                     'status': 'ON',
-                    'timestamp': machine_on_time.strftime('%Y-%m-%d %H:%M:%S')
+                    'timestamp': machine_on_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'runtime': 0
+                })
+
+                # CREATE initial machine runtime record
+                db.reference("machine").push({
+                    'on': machine_on_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'off': None,
+                    'runtime': None
                 })
 
                 print(f"[MACHINE ON] {machine_on_time}")
@@ -130,8 +146,17 @@ def on_message(client, userdata, msg):
         elif status == 'off' and machine_on_time:
             machine_off_time = time_event
             runtime = machine_off_time - machine_on_time
+            runtime_seconds = int(runtime.total_seconds())
             runtime_str = str(runtime).split('.')[0]
 
+            # Update machine status to OFF
+            db.reference("status/machine").set({
+                'status': 'OFF',
+                'timestamp': machine_off_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'runtime': runtime_seconds
+            })
+
+            # Update machine runtime record
             ref = db.reference("machine")
             all_records = ref.order_by_key().limit_to_last(1).get()
             if all_records:
@@ -142,12 +167,6 @@ def on_message(client, userdata, msg):
                         'off': machine_off_time.strftime('%Y-%m-%d %H:%M:%S'),
                         'runtime': runtime_str
                     })
-                    # Update status machine ke OFF
-                    db.reference("status/machine").set({
-                        'status': 'OFF',
-                        'timestamp': machine_off_time.strftime('%Y-%m-%d %H:%M:%S')
-                    })
-
                     print(f"[MACHINE OFF] {machine_off_time}, Runtime: {runtime_str}")
 
             machine_on_time = None
