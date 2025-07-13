@@ -112,6 +112,7 @@
 
     <!-- Firebase Realtime Update -->
     <script>
+        window.addEventListener("DOMContentLoaded", () => {
         const firebaseConfig = {
             apiKey: "AIzaSyCW_41f54-PLz5BUeuQaFTLW1gRQ52bNzE",
             authDomain: "iotboxdatabase.firebaseapp.com",
@@ -124,7 +125,7 @@
         };
 
         firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        var database = firebase.database();
 
         // --- SENSOR DATA ---
         const sensorTable = document.getElementById("sensorDataTable");
@@ -188,76 +189,82 @@
         let runtimeRowCount = 0;
 
         const runtimeRef = database.ref("machine");
-        runtimeRef.on("child_added", (snapshot) => {
+        runtimeRef.on("child_added", addRuntimeRow);
+        runtimeRef.on("child_changed", updateRuntimeRow);
+
+        function addRuntimeRow(snapshot) {
             const data = snapshot.val();
             runtimeRowCount++;
-            // Tampilkan tanda "-" kalau off atau runtime belum ada
-            const offDisplay = data.off && data.off !== "" ? data.off : "-";
-            const runtimeDisplay = data.runtime && data.runtime !== "" ? data.runtime : "-";
 
             const row = runtimeTable.insertRow(1);
+            row.setAttribute("data-key", snapshot.key);
+
+            const offDisplay = data.off || "-";
+            const runtimeDisplay = data.runtime || "-";
+
             row.innerHTML = `
                 <td>${runtimeRowCount}</td>
                 <td>${data.on}</td>
                 <td>${offDisplay}</td>
                 <td>${runtimeDisplay}</td>
             `;
+        }
 
-            if (runtimeTable.rows.length > 101) {
-                runtimeTable.deleteRow(runtimeTable.rows.length - 1);
+        function updateRuntimeRow(snapshot) {
+            const key = snapshot.key;
+            const updatedData = snapshot.val();
+            const rows = runtimeTable.rows;
+
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (row.getAttribute("data-key") === key) {
+                    const offDisplay = updatedData.off || "-";
+                    const runtimeDisplay = updatedData.runtime || "-";
+
+                    row.cells[2].textContent = offDisplay;
+                    row.cells[3].textContent = runtimeDisplay;
+                    break;
+                }
             }
-        });
+        }
+
 
         // --- MACHINE STATUS DISPLAY ---
         const machineStatusBox = document.getElementById("machineStatusBox");
         const statusTextDiv = document.getElementById("statusText");
 
-        const machineStatusRef = database.ref("machine");
-        machineStatusRef.on("child_added", (snapshot) => {
-            const data = snapshot.val();
+        // Referensi ke node machine
+        var machineStatusRef = database.ref("machine/ID001");
 
-            let statusClass = "unknown";
-            let statusText = "UNKNOWN";
+        // Listener realtime
+        machineStatusRef.on("value", (snapshot) => {
+        const data = snapshot.val();
+        console.log("Data Firebase:", data);
 
-            // Update status berdasarkan apakah off masih kosong atau sudah ada
-            if (data.on && (!data.off || data.off === "")) {
-                statusClass = "on";
-                statusText = "ON";
-            } else if (data.off && data.off !== "") {
-                statusClass = "off";
-                statusText = "OFF";
-            }
+        const machineStatusBox = document.getElementById("machineStatusBox");
+        const statusTextDiv = document.getElementById("statusText");
+        const runtimeTextDiv = document.getElementById("runtimeText");
+        const timestampTextDiv = document.getElementById("timestampText");
+
+        if (data) {
+            // Periksa boolean (benar-benar boolean, bukan string)
+            const isOn = data["Machine On"] === true;
+            const runtime = data["Runtime"] || 0;
+            const timestamp = data["Timestamp"] || "-";
+
+            const statusClass = isOn ? "on" : "off";
+            const statusText = isOn ? "ON" : "OFF";
 
             machineStatusBox.className = `machine-box ${statusClass}`;
             statusTextDiv.textContent = `Status: ${statusText}`;
-
-        });
-
-
-        // --- BUTTON ACTIVE STATE ---
-        window.addEventListener('DOMContentLoaded', () => {
-            const machineCards = document.querySelectorAll('.machine-card');
-
-            // 1. Injection Molding active saat pertama kali
-            const injectionCard = Array.from(machineCards).find(card =>
-            card.dataset.type === 'injection'
-            );
-            if (injectionCard) {
-            injectionCard.classList.add('active-button');
-            }
-
-            // 2. Tambahkan event listener ke semua button
-            machineCards.forEach(card => {
-            card.addEventListener('click', function (e) {
-                e.preventDefault();
-
-                // Hapus semua yang active dulu
-                machineCards.forEach(c => c.classList.remove('active-button'));
-
-                // Kasih class active ke yang diklik
-                this.classList.add('active-button');
-            });
-            });
+            runtimeTextDiv.textContent = `Runtime: ${runtime} detik`;
+            timestampTextDiv.textContent = `Waktu: ${timestamp}`;
+        } else {
+            machineStatusBox.className = "machine-box unknown";
+            statusTextDiv.textContent = "Status: UNKNOWN";
+            runtimeTextDiv.textContent = "Runtime: -";
+            timestampTextDiv.textContent = "Waktu: -";
+        }
         });
     </script>
 </body>

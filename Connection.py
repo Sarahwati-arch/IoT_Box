@@ -21,7 +21,7 @@ machine_off_recorded = True
 last_sensor_activity_time = None
 
 # Inisialisasi Firebase
-cred = credentials.Certificate("C:\\Users\\Irsyah\\Downloads\\iotboxdatabase-firebase-adminsdk-fbsvc-596ab6c560.json")
+cred = credentials.Certificate("C:\\Users\\HP\\Downloads\\iotboxdatabase-firebase-adminsdk-fbsvc-d340373f18.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://iotboxdatabase-default-rtdb.asia-southeast1.firebasedatabase.app'
 })
@@ -117,11 +117,12 @@ def on_message(client, userdata, msg):
                 machine_off_recorded = False
                 last_sensor_activity_time = time_event
 
-                db.reference("machine").push({
-                    'on': machine_on_time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'off': None,
-                    'runtime': None
+                # Update status machine (real-time)
+                db.reference("status/machine").set({
+                    'status': 'ON',
+                    'timestamp': machine_on_time.strftime('%Y-%m-%d %H:%M:%S')
                 })
+
                 print(f"[MACHINE ON] {machine_on_time}")
             else:
                 print("[IGNORED] Machine already ON")
@@ -141,6 +142,12 @@ def on_message(client, userdata, msg):
                         'off': machine_off_time.strftime('%Y-%m-%d %H:%M:%S'),
                         'runtime': runtime_str
                     })
+                    # Update status machine ke OFF
+                    db.reference("status/machine").set({
+                        'status': 'OFF',
+                        'timestamp': machine_off_time.strftime('%Y-%m-%d %H:%M:%S')
+                    })
+
                     print(f"[MACHINE OFF] {machine_off_time}, Runtime: {runtime_str}")
 
             machine_on_time = None
